@@ -82,8 +82,16 @@ function doPost(e) {
   return HtmlService.createHtmlOutput('ok');
 }
 
-/** Opening the /exec URL in a browser shows a link to the log sheet (owner only can open it). */
-function doGet() {
+// Read-back key for Claude. The public repo keeps this placeholder; the deployed copy has the real key.
+const DUMP_KEY = 'SET_IN_DEPLOYED_COPY_ONLY';
+
+/** Opening the /exec URL in a browser shows a link to the log sheet (owner only can open it).
+ *  ?dump=<DUMP_KEY> returns every row as JSON so Claude can read the log. */
+function doGet(e) {
+  if (e && e.parameter && e.parameter.dump && DUMP_KEY !== 'SET_IN_DEPLOYED_COPY_ONLY' && e.parameter.dump === DUMP_KEY) {
+    const values = getSheet_().getDataRange().getValues();
+    return ContentService.createTextOutput(JSON.stringify(values)).setMimeType(ContentService.MimeType.JSON);
+  }
   const sh = getSheet_();
   const url = sh.getParent().getUrl();
   return HtmlService.createHtmlOutput(
