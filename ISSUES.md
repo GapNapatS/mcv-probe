@@ -3,3 +3,4 @@
 | Date | What happened | What the code did | Outcome |
 |---|---|---|---|
 | 2026-11-19 | Built v1 | — | Awaiting receiver deploy and first test clicks (Gap, Yanita) |
+| 2026-11-19 | Receiver deployed by Gap; curl POST test | doPost appended a row | Rows 0 → 1 (test row "CLAUDE TEST ROW", session test-claude-1119) |
