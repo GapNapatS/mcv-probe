@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Link Test</title>
+<style>
+  :root { --bg:#fafaf8; --fg:#1d1d1b; --muted:#6b6b66; --card:#ffffff; --line:#e3e2dc; --accent:#2f5d8a; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#161615; --fg:#ecebe6; --muted:#a3a29c; --card:#21211f; --line:#34332f; --accent:#8fb6dd; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  main { max-width:640px; margin:0 auto; padding:24px 16px 48px; }
+  h1 { font-size:1.4rem; margin:0 0 8px; }
+  p { margin:0 0 12px; }
+  .muted { color:var(--muted); font-size:.92rem; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin:16px 0; }
+  label { display:block; font-weight:600; margin:12px 0 4px; }
+  input, textarea { width:100%; font:inherit; padding:10px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--fg); }
+  textarea { min-height:80px; }
+  button { margin-top:14px; font:inherit; font-weight:600; padding:10px 18px; border:0; border-radius:8px; background:var(--accent); color:var(--bg); cursor:pointer; }
+  #status { margin-top:10px; font-size:.92rem; }
+  details summary { cursor:pointer; font-weight:600; }
+  pre { white-space:pre-wrap; word-break:break-all; font-size:.8rem; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:10px; max-height:360px; overflow:auto; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Link test</h1>
+  <p>Thanks for helping. This page tests what a website can learn when you open it from MyCourseville. It is a test for a future lecture player, not a quiz, and nothing here is graded.</p>
+  <p class="muted">What is recorded: the technical details your browser shares with any website (listed in full at the bottom of this page), how long the page stays open, scrolling and clicks, and anything you type below. It goes to Aj Gap's private Google Sheet and is deleted after the test.</p>
+
+  <div class="card">
+    <label for="sid">Your student ID (optional)</label>
+    <input id="sid" inputmode="numeric" autocomplete="off">
+    <label for="nm">Your name or nickname (optional)</label>
+    <input id="nm" autocomplete="off">
+    <label for="ans">Practice pause: in one sentence, what did you have for breakfast, and how hungry are you now?</label>
+    <textarea id="ans"></textarea>
+    <button id="send">Send</button>
+    <div id="status" class="muted"></div>
+  </div>
+
+  <p class="muted">You can close this tab any time after pressing Send. Please leave it open for about 30 seconds first.</p>
+
+  <details class="card">
+    <summary>Everything this page has recorded about your visit</summary>
+    <pre id="dump">Collecting…</pre>
+  </details>
+</main>
+<script src="config.js"></script>
+<script>
+(function () {
+  'use strict';
+  var EXEC_URL = (window.PROBE_CONFIG && window.PROBE_CONFIG.EXEC_URL) || '';
+  var t0 = Date.now();
+  function rid() { return Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
+  function safe(fn, fallback) { try { var v = fn(); return v === undefined ? fallback : v; } catch (e) { return 'error: ' + e.message; } }
+
+  // Returning-visitor memory (per browser only)
+  var visitorId = safe(function () { return localStorage.getItem('probe_vid'); }, null);
+  var visitNumber = Number(safe(function () { return localStorage.getItem('probe_visits'); }, 0)) || 0;
+  if (!visitorId || String(visitorId).indexOf('error') === 0) { visitorId = rid(); }
+  visitNumber += 1;
+  safe(function () { localStorage.setItem('probe_vid', visitorId); localStorage.setItem('probe_visits', String(visitNumber)); });
+  var sessionId = rid();
+
+  var query = {};
+  safe(function () { new URLSearchParams(location.search).forEach(function (v, k) { query[k] = v; }); });
+
+  var nav = navigator;
+  var context = {
+    href: location.href,
+    query: query,
+    hash: location.hash,
+    referrer: document.referrer,
+    history_length: history.length,
+    in_iframe: safe(function () { return window.top !== window.self; }, null),
+    top_url_readable: safe(function () { return window.top.location.href; }, null),
+    ancestor_origins: safe(function () { return location.ancestorOrigins ? Array.prototype.slice.call(location.ancestorOrigins) : null; }, null),
+    has_opener: safe(function () { return !!window.opener; }, null),
+    window_name: window.name,
+    navigation_type: safe(function () { var n = performance.getEntriesByType('navigation')[0]; return n ? n.type : null; }, null),
+    user_agent: nav.userAgent,
+    platform: safe(function () { return (nav.userAgentData && nav.userAgentData.platform) || nav.platform; }, null),
+    mobile: safe(function () { return nav.userAgentData ? nav.userAgentData.mobile : /Mobi|Android|iPhone|iPad/i.test(nav.userAgent); }, null),
+    brands: safe(function () { return nav.userAgentData ? nav.userAgentData.brands : null; }, null),
+    language: nav.language,
+    languages: safe(function () { return nav.languages; }, null),
+    timezone: safe(function () { return Intl.DateTimeFormat().resolvedOptions().timeZone; }, null),
+    tz_offset_min: new Date().getTimezoneOffset(),
+    local_time: new Date().toString(),
+    screen: screen.width + 'x' + screen.height + ' @' + (window.devicePixelRatio || 1) + 'x',
+    viewport: window.innerWidth + 'x' + window.innerHeight,
+    color_depth: screen.colorDepth,
+    orientation: safe(function () { return screen.orientation ? screen.orientation.type : null; }, null),
+    touch_points: nav.maxTouchPoints,
+    cpu_cores: nav.hardwareConcurrency,
+    memory_gb: nav.deviceMemory,
+    connection: safe(function () { var c = nav.connection; return c ? { type: c.effectiveType, downlink_mbps: c.downlink, rtt_ms: c.rtt, save_data: c.saveData } : null; }, null),
+    cookies_enabled: nav.cookieEnabled,
+    cookies_visible: document.cookie,
+    do_not_track: nav.doNotTrack,
+    dark_mode: safe(function () { return matchMedia('(prefers-color-scheme: dark)').matches; }, null),
+    reduced_motion: safe(function () { return matchMedia('(prefers-reduced-motion: reduce)').matches; }, null),
+    online: nav.onLine,
+    webdriver: nav.webdriver
+  };
+  var network = {};
+  var events = [];
+  var maxScroll = 0, clicks = 0, hiddenCount = 0;
+
+  function payload(event, detail) {
+    return {
+      event: event,
+      session_id: sessionId,
+      visitor_id: visitorId,
+      visit_number: visitNumber,
+      seconds_on_page: Math.round((Date.now() - t0) / 1000),
+      typed_id: document.getElementById('sid').value.trim(),
+      typed_name: document.getElementById('nm').value.trim(),
+      context: context,
+      network: network,
+      detail: detail || null,
+      sent_at: new Date().toISOString()
+    };
+  }
+
+  function send(event, detail, useBeacon) {
+    var obj = payload(event, detail);
+    events.push({ event: event, t: obj.seconds_on_page, detail: detail || null });
+    render();
+    if (!EXEC_URL) return Promise.resolve(false);
+    var body = JSON.stringify(obj);
+    if (useBeacon && nav.sendBeacon) {
+      try { nav.sendBeacon(EXEC_URL, new Blob([body], { type: 'text/plain;charset=utf-8' })); return Promise.resolve(true); } catch (e) {}
+    }
+    return fetch(EXEC_URL, { method: 'POST', mode: 'no-cors', keepalive: true, headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: body })
+      .then(function () { return true; }, function () { return false; });
+  }
+
+  function render() {
+    document.getElementById('dump').textContent = JSON.stringify({
+      session_id: sessionId, visitor_id: visitorId, visit_number: visitNumber,
+      context: context, network: network, events_sent: events,
+      receiver: EXEC_URL ? 'connected' : 'NOT SET (nothing is being saved)'
+    }, null, 2);
+  }
+
+  // High-entropy browser hints (Chromium only)
+  var hints = safe(function () {
+    return nav.userAgentData && nav.userAgentData.getHighEntropyValues
+      ? nav.userAgentData.getHighEntropyValues(['model', 'platformVersion', 'fullVersionList', 'architecture'])
+      : null;
+  }, null);
+  var ipLookup = fetch('https://ipapi.co/json/').then(function (r) { return r.json(); }).then(function (j) {
+    network = { ip: j.ip, org: j.org, asn: j.asn, city: j.city, region: j.region, country: j.country_name };
+  }).catch(function () {
+    return fetch('https://api.ipify.org?format=json').then(function (r) { return r.json(); }).then(function (j) { network = { ip: j.ip }; }).catch(function () { network = { ip: 'lookup failed' }; });
+  });
+
+  Promise.all([Promise.resolve(hints).then(function (h) { if (h && typeof h === 'object') context.ua_hints = h; }).catch(function () {}), ipLookup])
+    .then(function () { send('load'); });
+
+  // Behaviour
+  window.addEventListener('scroll', function () {
+    var h = document.documentElement.scrollHeight - window.innerHeight;
+    var pct = h > 0 ? Math.round(100 * window.scrollY / h) : 100;
+    if (pct > maxScroll) maxScroll = pct;
+  }, { passive: true });
+  document.addEventListener('click', function (e) {
+    clicks += 1;
+    var t = e.target; var tag = t && t.tagName ? t.tagName.toLowerCase() + (t.id ? '#' + t.id : '') : '?';
+    if (tag !== 'button#send') send('click', { target: tag, n: clicks });
+  });
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') hiddenCount += 1;
+    send('visibility_' + document.visibilityState, { hidden_count: hiddenCount, max_scroll_pct: maxScroll }, document.visibilityState === 'hidden');
+  });
+  window.addEventListener('blur', function () { send('blur'); });
+  window.addEventListener('focus', function () { send('focus'); });
+  var beats = 0;
+  var hb = setInterval(function () {
+    beats += 1;
+    send('heartbeat', { max_scroll_pct: maxScroll, clicks: clicks });
+    if (beats >= 8) clearInterval(hb); // 15 s x 8 = 2 min
+  }, 15000);
+  window.addEventListener('pagehide', function () { send('pagehide', { max_scroll_pct: maxScroll, clicks: clicks, hidden_count: hiddenCount }, true); });
+
+  document.getElementById('send').addEventListener('click', function () {
+    var st = document.getElementById('status');
+    st.textContent = 'Sending…';
+    send('submit', { answer: document.getElementById('ans').value.trim(), max_scroll_pct: maxScroll }).then(function (ok) {
+      st.textContent = ok ? 'Sent. Thank you! You can leave this tab open for a little longer, then close it.' : 'Could not send. Please tell Aj Gap.';
+    });
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
